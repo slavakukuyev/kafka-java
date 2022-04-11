@@ -33,7 +33,11 @@ public class KafkaProducerDemo {
 
         for (int i = 0; i < 10; i++) {
 
-            ProducerRecord<String, String> producerRecord = new ProducerRecord<>(KafkaDemoTopic, "Produce message with cb " + i);
+            String recordValue = "Produce message with cb " + i;
+            //the same key goes to the same partition
+            String recordKey = "id_" + i;
+
+            ProducerRecord<String, String> producerRecord = new ProducerRecord<>(KafkaDemoTopic,recordKey, recordValue);
 
             producer.send(producerRecord, (metadata, err) -> {
                 //called when message sent to producer or error thrown
@@ -41,6 +45,7 @@ public class KafkaProducerDemo {
                 if (err == null) {
                     log.info("\nThe record sent successfully to kafka: \n" +
                             "Topic: " + metadata.topic() + "\n" +
+                            "Key: " + recordKey + "\n" +
                             "Partition: " + metadata.partition() + "\n" +
                             "Offset: " + metadata.offset() + "\n" +
                             "Timestamp: " + metadata.timestamp() + "\n"
@@ -57,12 +62,13 @@ public class KafkaProducerDemo {
 
             //if you want to work in RoundRobin inserting then:
             //use sleep to have some timestamp for letting Kafka send each message to the next partition
-            try {
+            //and when we use key for each message, then each key goes to the same partition
+/*            try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 log.error("Error on try to sleep " + e);
             }
-
+*/
         }
 
         //wait up until all data sent to kafka and received by brokers
