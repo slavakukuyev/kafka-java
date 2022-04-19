@@ -5,6 +5,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,8 +31,8 @@ public class KafkaConsumerDemo {
         properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         //GROUP_ID
-        properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KAFKA-CONSUMER-GROUP-ID1");
-      //  properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "TRUE");
+        properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KAFKA-CONSUMER-GROUP-ID2");
+        //  properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "TRUE");
 
         //none - if there are no messages, dont start consumer
         //earliest - read messages of the topic from the beginning
@@ -38,7 +40,7 @@ public class KafkaConsumerDemo {
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         //create consumer
-        KafkaConsumer<String,String>  consumer = new KafkaConsumer<>(properties);
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
 
         //subscribe to single topic
         consumer.subscribe(Collections.singleton(KafkaDemoTopic));
@@ -47,19 +49,43 @@ public class KafkaConsumerDemo {
 //        consumer.subscribe(Arrays.asList(KafkaDemoTopic));
 
 
-        while(true) {//!!!don't use such code in prod
-            log.info("Polling...");
+        //Important notice to work with IntelliJ: when you are in debug/run mode, you have an "Exit" Button in your "Run"/"Debug" panel usually on the right side at the bottom
+        final Thread mainThread = Thread.currentThread();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("Detected shutdown, lets wakeup the consumer");
+            consumer.wakeup();
 
-            //poll messages if exist or wait for 1500 ms and then poll
-            ConsumerRecords<String,String> records = consumer.poll(Duration.ofMillis(1500));
-
-            for(ConsumerRecord<String,String> record:records) {
-                log.info("\nThe record sent successfully to kafka: \n" +
-                        "Value: " + record.value() + "\n" +
-                        "Key: " + record.key() + "\n" +
-                        "Partition: " + record.partition() + "\n" +
-                        "Offset: " + record.offset() + "\n");
+            try {
+                mainThread.join();
+            } catch (
+                    InterruptedException e) {
+                e.printStackTrace();
             }
+        }));
+
+        try {
+            while (true) {//!!!don't use such code in prod
+                log.info("Polling...");
+
+                //poll messages if exist or wait for 1500 ms and then poll
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1500));
+
+
+                for (ConsumerRecord<String, String> record : records) {
+                    log.info("\nThe record sent successfully to kafka: \n" +
+                            "Value: " + record.value() + "\n" +
+                            "Key: " + record.key() + "\n" +
+                            "Partition: " + record.partition() + "\n" +
+                            "Offset: " + record.offset() + "\n");
+                }
+            }
+        } catch (WakeupException e) {
+            log.info("Wakeup exception");
+        } catch (Exception e) {
+            log.error("Unexpected exception", e);
+        } finally {
+            log.info("closing consumer...");
+            consumer.close();
         }
     }
 }
