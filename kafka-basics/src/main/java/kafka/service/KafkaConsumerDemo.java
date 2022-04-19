@@ -19,7 +19,7 @@ import java.util.Properties;
 
 public class KafkaConsumerDemo {
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
-    private static final String KafkaDemoTopic = "KafkaDemoTopic";
+    private static final String KafkaDemoTopic = "KafkaDemoTopic1";
 
     public static void main(String[] args) {
         // create consumer options
@@ -31,7 +31,7 @@ public class KafkaConsumerDemo {
         properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         //GROUP_ID
-        properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KAFKA-CONSUMER-GROUP-ID2");
+        properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KAFKA-CONSUMER-GROUP-ID");
         //  properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "TRUE");
 
         //none - if there are no messages, dont start consumer
