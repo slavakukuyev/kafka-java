@@ -10,7 +10,7 @@ import java.util.Properties;
 public class KafkaProducerDemo {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
-    private static final String KafkaDemoTopic = "KafkaDemoTopic1";
+    private static final String KafkaDemoTopic = "KafkaDemoTopic3";
 
     public static void main(String[] args) {
         // create producer options
@@ -24,7 +24,7 @@ public class KafkaProducerDemo {
 
 
         //create topic:
-        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic KafkaDemoTopic1 --partitions 3 --replication-factor 1
+        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic KafkaDemoTopic3 --partitions 3 --replication-factor 1
         //listen for messages:
         //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic KafkaDemoTopic
 
