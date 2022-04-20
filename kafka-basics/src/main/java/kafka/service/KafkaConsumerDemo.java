@@ -44,6 +44,17 @@ public class KafkaConsumerDemo {
         properties.setProperty(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "10000");//after 10s consumers will reassign
 
 
+
+        /*
+        example of auto commit:
+        1.poll messages  (timer started in background)
+        2.after 3 seconds poll messages
+        3.after 3 seconds poll messages (6s > 5s --> then run in background .commitAsync())
+         */
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        properties.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "5000"); //default
+
+
         //none - if there are no messages, don't start consumer
         //earliest - read messages of the topic from the beginning
         //latest - read messages with timestamp after consumer started
