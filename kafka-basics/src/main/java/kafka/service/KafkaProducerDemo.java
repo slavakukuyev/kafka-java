@@ -1,18 +1,25 @@
 package kafka.service;
 
+import com.launchdarkly.eventsource.EventHandler;
+import com.launchdarkly.eventsource.EventSource;
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+
+import java.net.URI;
+import java.util.Locale;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 public class KafkaProducerDemo {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
-    private static final String KafkaDemoTopic = "KafkaDemoTopic3";
+    private static final String KafkaTopic = "wikimedia.recentchange";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         // create producer options
         Properties properties = new Properties();
         properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092");
@@ -24,56 +31,20 @@ public class KafkaProducerDemo {
 
 
         //create topic:
-        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic KafkaDemoTopic3 --partitions 3 --replication-factor 1
+        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic wikimedia.recentchange --partitions 3 --replication-factor 1
         //listen for messages:
-        //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic KafkaDemoTopic
+        //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic wikimedia.recentchange
 
 
-        //send data async
+        EventHandler handler = new WikimediaHandler(producer, KafkaTopic);
+        String url = "https://stream.wikimedia.org/v2/stream/recentchange";
+       EventSource.Builder builder = new EventSource.Builder(handler, URI.create(url));
+       EventSource eventsource = builder.build();
+       
+       eventsource.start();
 
-        for (int i = 0; i < 10; i++) {
-
-            String recordValue = "Produce message with cb " + i;
-            //the same key goes to the same partition
-            String recordKey = "id_" + i;
-
-            ProducerRecord<String, String> producerRecord = new ProducerRecord<>(KafkaDemoTopic,recordKey, recordValue);
-
-            producer.send(producerRecord, (metadata, err) -> {
-                //called when message sent to producer or error thrown
-
-                if (err == null) {
-                    log.info("\nThe record sent successfully to kafka: \n" +
-                            "Topic: " + metadata.topic() + "\n" +
-                            "Key: " + recordKey + "\n" +
-                            "Partition: " + metadata.partition() + "\n" +
-                            "Offset: " + metadata.offset() + "\n" +
-                            "Timestamp: " + metadata.timestamp() + "\n"
-                    );
-                } else {
-                    log.error("Error while producing message: %o" + err);
-                }
-
-            });
-
-            //kafka-topics --bootstrap-server "127.0.0.1:9092" --describe --topic KafkaDemoTopic
-            //batches of messages inserted to single partition:
-            //partitioner.class = class org.apache.kafka.clients.producer.internals.DefaultPartitioner
-
-            //if you want to work in RoundRobin inserting then:
-            //use sleep to have some timestamp for letting Kafka send each message to the next partition
-            //and when we use key for each message, then each key goes to the same partition
-/*            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                log.error("Error on try to sleep " + e);
-            }
-*/
-        }
-
-        //wait up until all data sent to kafka and received by brokers
-        //call gives a convenient way to ensure all previously sent messages have actually completed.
-        producer.flush(); //sync method
+       //run code 10 minutes then exit
+        TimeUnit.MINUTES.sleep(10);
 
         producer.close();
     }
