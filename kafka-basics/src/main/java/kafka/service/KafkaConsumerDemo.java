@@ -16,7 +16,7 @@ import java.util.Properties;
 
 public class KafkaConsumerDemo {
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
-    private static final String KafkaDemoTopic = "KafkaDemoTopic3";
+    private static final String KafkaDemoTopic = "wikimedia.recentchange1";
 
     public static void main(String[] args) {
         // create consumer options

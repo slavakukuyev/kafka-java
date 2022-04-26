@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 public class KafkaProducerDemo {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
-    private static final String KafkaTopic = "wikimedia.recentchange";
+    private static final String KafkaTopic = "wikimedia.recentchange1";
 
     public static void main(String[] args) throws InterruptedException {
         // create producer options
@@ -26,12 +26,19 @@ public class KafkaProducerDemo {
         properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
+        //if we have 3 brokers then configuration of insync replica has to be updated to 2
+        //min.insync.replicas=2  // https://kafka.apache.org/documentation/#min.insync.replicas
+        properties.setProperty(ProducerConfig.ACKS_CONFIG, "all"); // or -1
+
+
+
+
         //create producer
         KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
 
         //create topic:
-        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic wikimedia.recentchange --partitions 3 --replication-factor 1
+        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic wikimedia.recentchange1 --partitions 3 --replication-factor 3
         //listen for messages:
         //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic wikimedia.recentchange
 
