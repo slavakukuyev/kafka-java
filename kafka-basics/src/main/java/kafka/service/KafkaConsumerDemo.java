@@ -16,12 +16,12 @@ import java.util.Properties;
 
 public class KafkaConsumerDemo {
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
-    private static final String KafkaDemoTopic = "wikimedia.recentchange1";
+    private static final String KafkaDemoTopic = "wikimedia.recentchange3";
 
     public static void main(String[] args) {
         // create consumer options
         Properties properties = new Properties();
-        properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092");
+        properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092,127.0.0.1:9093,127.0.0.1:9094");
 
         //as in producer with serialize kafka keys/messages, consumers have to deserialize keys/messages into string
         //NOTE!!! use StringDeserializer  //Copied from producer and missed the class name, so spent for this about 10 minutes
@@ -38,11 +38,10 @@ public class KafkaConsumerDemo {
         //enable static assignment for partitions group.instance.id
         //each instance ID has to be with different name. Usually it's some env var with identical instance name
         //if after session.timeout.ms = 45000 (ms default value) consumer connects it polls data from its partition without reassignment of consumers
-        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance1");
-        //properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance2");
-        //properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance3");
+//        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance1");
+//        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance2");
+        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance3");
         properties.setProperty(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "10000");//after 10s consumers will reassign
-
 
 
         /*

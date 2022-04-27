@@ -7,8 +7,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-
 import java.net.URI;
 import java.util.Locale;
 import java.util.Properties;
@@ -17,40 +15,51 @@ import java.util.concurrent.TimeUnit;
 public class KafkaProducerDemo {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
-    private static final String KafkaTopic = "wikimedia.recentchange1";
+    private static final String KafkaTopic = "wikimedia.recentchange3";
 
     public static void main(String[] args) throws InterruptedException {
         // create producer options
         Properties properties = new Properties();
-        properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092");
+        properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092,127.0.0.1:9093,127.0.0.1:9094");
         properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         //if we have 3 brokers then configuration of insync replica has to be updated to 2
         //min.insync.replicas=2  // https://kafka.apache.org/documentation/#min.insync.replicas
-        properties.setProperty(ProducerConfig.ACKS_CONFIG, "all"); // or -1
-
-
-
+        properties.setProperty(ProducerConfig.ACKS_CONFIG, "all");
 
         //create producer
         KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
+        //create topic
+        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic wikimedia.recentchange3 --partitions 3 --replication-factor 3 --config "min.insync.replicas=2"
+        /*
+        Request:
+        kafka-topics --bootstrap-server "127.0.0.1:9092" --describe --topic wikimedia.recentchange3
+        Result:
+        Topic: wikimedia.recentchange3	TopicId: GqANqU2qSPibkgTVVqdWwQ	PartitionCount: 3	ReplicationFactor: 3	Configs: min.insync.replicas=2
+	    Topic: wikimedia.recentchange3	Partition: 0	Leader: 3	Replicas: 3,2,1	Isr: 3,2,1
+	    Topic: wikimedia.recentchange3	Partition: 1	Leader: 1	Replicas: 1,3,2	Isr: 1,3,2
+	    Topic: wikimedia.recentchange3	Partition: 2	Leader: 2	Replicas: 2,1,3	Isr: 2,1,3
 
-        //create topic:
-        //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic wikimedia.recentchange1 --partitions 3 --replication-factor 3
+
+	    I restarted one broker, producer worked as expected,
+	    then I restarted 2 brokers and during the restarts got similar errors:
+	    Got error produce response with correlation id 4224 on topic-partition wikimedia.recentchange3-0, retrying (2147483428 attempts left). Error: NOT_ENOUGH_REPLICAS
+         */
+
         //listen for messages:
         //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic wikimedia.recentchange
 
 
         EventHandler handler = new WikimediaHandler(producer, KafkaTopic);
         String url = "https://stream.wikimedia.org/v2/stream/recentchange";
-       EventSource.Builder builder = new EventSource.Builder(handler, URI.create(url));
-       EventSource eventsource = builder.build();
-       
-       eventsource.start();
+        EventSource.Builder builder = new EventSource.Builder(handler, URI.create(url));
+        EventSource eventsource = builder.build();
 
-       //run code 10 minutes then exit
+        eventsource.start();
+
+        //run code 10 minutes then exit
         TimeUnit.MINUTES.sleep(10);
 
         producer.close();
