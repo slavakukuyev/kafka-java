@@ -38,9 +38,9 @@ public class KafkaConsumerDemo {
         //enable static assignment for partitions group.instance.id
         //each instance ID has to be with different name. Usually it's some env var with identical instance name
         //if after session.timeout.ms = 45000 (ms default value) consumer connects it polls data from its partition without reassignment of consumers
-//        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance1");
+        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance1");
 //        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance2");
-        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance3");
+//        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance3");
         properties.setProperty(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "10000");//after 10s consumers will reassign
 
 

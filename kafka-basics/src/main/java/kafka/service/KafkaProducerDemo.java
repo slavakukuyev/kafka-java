@@ -48,6 +48,17 @@ public class KafkaProducerDemo {
 	    Got error produce response with correlation id 4224 on topic-partition wikimedia.recentchange3-0, retrying (2147483428 attempts left). Error: NOT_ENOUGH_REPLICAS
          */
 
+
+        /*
+            Idempotent Producer
+         */
+        properties.setProperty(ProducerConfig.RETRIES_CONFIG, String.valueOf(Integer.MAX_VALUE));// 2147483647
+        properties.setProperty(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");//kafka version >= 1.0
+        properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");//do not save the same message twice
+        properties.setProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "120000"); //delivery timeout of message in ms (2 minutes)
+
+
+
         //listen for messages:
         //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic wikimedia.recentchange
 
