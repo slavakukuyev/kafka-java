@@ -68,7 +68,16 @@ public class KafkaProducerDemo {
         //high throughput producer config
         properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
         properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
-        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32*1024));
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32 * 1024));
+
+        /*
+        Exception will be thrown after third step:
+         1. Producer will fill memory buffer
+         2. .send() will be blocked // means that broker doesn't accept any data frm the producer
+         3. 60ms elapsed after block
+         */
+        properties.setProperty(ProducerConfig.BUFFER_MEMORY_CONFIG, "33554432");
+        properties.setProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "60000");
 
 
         //create producer
