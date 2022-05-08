@@ -28,9 +28,6 @@ public class KafkaProducerDemo {
         //min.insync.replicas=2  // https://kafka.apache.org/documentation/#min.insync.replicas
         properties.setProperty(ProducerConfig.ACKS_CONFIG, "all");
 
-        //create producer
-        KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
-
         //create topic
         //kafka-topics --bootstrap-server "127.0.0.1:9092" --create --topic wikimedia.recentchange3 --partitions 3 --replication-factor 3 --config "min.insync.replicas=2"
         /*
@@ -58,6 +55,21 @@ public class KafkaProducerDemo {
         properties.setProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "120000"); //delivery timeout of message in ms (2 minutes)
 
 
+        /*
+        Compression type	Compression ratio	CPU usage	Compression speed	Network bandwidth usage
+                    Gzip	Highest	            Highest	    Slowest	            Lowest
+                    Snappy	Medium	            Moderate	Moderate            Medium
+                    Lz4	    Low	                Lowest	    Fastest	            Highest
+                    Zstd	Medium	            Moderate	Moderate            Medium
+
+         You will need to upgrade Kafka if it's older than version 2.1.0 to use Zstd compression, otherwise use snappy
+         */
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd");
+
+
+
+        //create producer
+        KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
         //listen for messages:
         //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic wikimedia.recentchange
