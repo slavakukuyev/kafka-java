@@ -64,8 +64,11 @@ public class KafkaProducerDemo {
 
          You will need to upgrade Kafka if it's older than version 2.1.0 to use Zstd compression, otherwise use snappy
          */
-        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd");
 
+        //high throughput producer config
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32*1024));
 
 
         //create producer
