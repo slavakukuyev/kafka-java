@@ -84,7 +84,7 @@ public class KafkaProducerDemo {
         KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
         //listen for messages:
-        //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic wikimedia.recentchange
+        //kafka-console-consumer --bootstrap-server 127.0.0.1:9092 --topic wikimedia.recentchange3
 
 
         EventHandler handler = new WikimediaHandler(producer, KafkaTopic);

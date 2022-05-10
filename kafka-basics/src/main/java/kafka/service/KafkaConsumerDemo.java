@@ -2,14 +2,20 @@ package kafka.service;
 
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.common.errors.WakeupException;
-import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.opensearch.action.admin.indices.create.CreateIndexRequest;
+import org.opensearch.action.index.IndexRequest;
+import org.opensearch.action.index.IndexResponse;
+import org.opensearch.client.IndicesAdminClient;
+import org.opensearch.client.IndicesClient;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.indices.GetIndexRequest;
+import org.opensearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -17,8 +23,9 @@ import java.util.Properties;
 public class KafkaConsumerDemo {
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
     private static final String KafkaDemoTopic = "wikimedia.recentchange3";
+    private static final String openSearchIndex = "wikimedia";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         // create consumer options
         Properties properties = new Properties();
         properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092,127.0.0.1:9093,127.0.0.1:9094");
@@ -57,7 +64,7 @@ public class KafkaConsumerDemo {
         //none - if there are no messages, don't start consumer
         //earliest - read messages of the topic from the beginning
         //latest - read messages with timestamp after consumer started
-        properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
 
         //create consumer
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
@@ -83,29 +90,47 @@ public class KafkaConsumerDemo {
             }
         }));
 
-        try {
+        // create an OpenSearch Client
+        RestHighLevelClient openSearchClient = OpenSearchClient.createOpenSearchClient();
+
+        //create index in openSearch in case it doesn't exist
+        try (openSearchClient; consumer) {
+            boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest(openSearchIndex), RequestOptions.DEFAULT);
+
+            if (!indexExists) {
+                CreateIndexRequest createIndexRequest = new CreateIndexRequest(openSearchIndex);
+                openSearchClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+                log.info("New index created in open search");
+            }
+
             while (true) {//!!!don't use such code in prod
                 log.info("Polling...");
 
                 //poll messages if exist or wait for 1500 ms and then poll
-                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1500));
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
 
-
+                log.info("Consumer {} received {} records", consumer.groupMetadata().groupInstanceId().get(), records.count());
                 for (ConsumerRecord<String, String> record : records) {
-                    log.info("\nThe record sent successfully to kafka: \n" +
-                            "Value: " + record.value() + "\n" +
-                            "Key: " + record.key() + "\n" +
-                            "Partition: " + record.partition() + "\n" +
-                            "Offset: " + record.offset() + "\n");
+                    try {
+                        IndexRequest indexRequest = new IndexRequest(openSearchIndex)
+                                .source(record.value(), XContentType.JSON);
+                        IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+
+                        log.info(response.getId());
+
+
+                        log.info("\nThe record received successfully from kafka: \n" +
+                                "Value: " + record.value() + "\n" +
+                                "Key: " + record.key() + "\n" +
+                                "Partition: " + record.partition() + "\n" +
+                                "Offset: " + record.offset() + "\n" +
+                                "Open Search Index Response: " + response.getId() + "\n");
+                    } catch (Exception e) {
+
+                    }
                 }
             }
-        } catch (WakeupException e) {
-            log.info("Wakeup exception");
-        } catch (Exception e) {
-            log.error("Unexpected exception", e);
-        } finally {
-            log.info("closing consumer...");
-            consumer.close();
+
         }
     }
 }
