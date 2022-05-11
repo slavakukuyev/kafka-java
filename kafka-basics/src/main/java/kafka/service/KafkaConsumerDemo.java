@@ -65,7 +65,7 @@ public class KafkaConsumerDemo {
         2.after 3 seconds poll messages
         3.after 3 seconds poll messages (6s > 5s --> then run in background .commitAsync())
          */
-        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");//"at-least-once" reading scenario
         properties.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "5000"); //default
 
 
