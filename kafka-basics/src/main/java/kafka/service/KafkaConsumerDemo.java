@@ -1,13 +1,12 @@
 package kafka.service;
 
+import com.google.gson.JsonParser;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
-import org.opensearch.client.IndicesAdminClient;
-import org.opensearch.client.IndicesClient;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.GetIndexRequest;
@@ -24,6 +23,15 @@ public class KafkaConsumerDemo {
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
     private static final String KafkaDemoTopic = "wikimedia.recentchange3";
     private static final String openSearchIndex = "wikimedia";
+
+    private static String extractRecordId(String jsonString) {
+       return  JsonParser.parseString(jsonString)
+                .getAsJsonObject()
+                .get("meta")
+                .getAsJsonObject()
+                .get("id")
+                .getAsString();
+    }
 
     public static void main(String[] args) throws IOException {
         // create consumer options
@@ -111,9 +119,15 @@ public class KafkaConsumerDemo {
 
                 log.info("Consumer {} received {} records", consumer.groupMetadata().groupInstanceId().get(), records.count());
                 for (ConsumerRecord<String, String> record : records) {
+
+                    //in case we haven't id in record use simple:
+                    //String uniqueId = record.topic() + "_" + record.partition() + "_" + record.offset();
+                    //otherwise extract id from record:
+                    String uniqueId = extractRecordId(record.value());
+
                     try {
                         IndexRequest indexRequest = new IndexRequest(openSearchIndex)
-                                .source(record.value(), XContentType.JSON);
+                                .source(record.value(), XContentType.JSON).id(uniqueId);
                         IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
 
                         log.info(response.getId());
