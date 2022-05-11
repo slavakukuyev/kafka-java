@@ -2,9 +2,10 @@ package kafka.service;
 
 import com.google.gson.JsonParser;
 import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.client.RequestOptions;
@@ -20,7 +21,7 @@ import java.util.Properties;
 
 
 public class KafkaConsumerDemo {
-    private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class.getSimpleName());
+    private static final Logger log = LoggerFactory.getLogger(KafkaConsumerDemo.class.getSimpleName());
     private static final String KafkaDemoTopic = "wikimedia.recentchange3";
     private static final String openSearchIndex = "wikimedia";
 
@@ -43,8 +44,7 @@ public class KafkaConsumerDemo {
         properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         //GROUP_ID
-        properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KAFKA-CONSUMER-GROUP-ID");
-        //  properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "TRUE");
+        properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KAFKA-CONSUMER-GROUP-ID-666");
 
         //partition.assignment.strategy
         //by default its (RangeAssignor, CooperativeStickyAssignor) //you can set list of strategies
@@ -58,6 +58,17 @@ public class KafkaConsumerDemo {
 //        properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "instance3");
         properties.setProperty(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "10000");//after 10s consumers will reassign
 
+        /*
+        tested. log from console:
+            [main] INFO KafkaConsumerDemo - Polling...
+            [main] INFO KafkaConsumerDemo - Consumer instance1 received 666 records
+            [main] INFO KafkaConsumerDemo - Consumer sent 666 record(s) to OpenSearch
+            [main] INFO KafkaConsumerDemo - Offsets have been committed by consumer
+            [main] INFO KafkaConsumerDemo - Polling...
+        ...
+         */
+        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "666");//number of maximum record on one poll //rename consumer group id to receive all records
+
 
         /*
         example of auto commit:
@@ -65,14 +76,14 @@ public class KafkaConsumerDemo {
         2.after 3 seconds poll messages
         3.after 3 seconds poll messages (6s > 5s --> then run in background .commitAsync())
          */
-        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");//"at-least-once" reading scenario
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");//"at-most-once" reading scenario
         properties.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "5000"); //default
 
 
         //none - if there are no messages, don't start consumer
         //earliest - read messages of the topic from the beginning
         //latest - read messages with timestamp after consumer started
-        properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         //create consumer
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
@@ -118,6 +129,8 @@ public class KafkaConsumerDemo {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
 
                 log.info("Consumer {} received {} records", consumer.groupMetadata().groupInstanceId().get(), records.count());
+
+                BulkRequest bulkRequest = new BulkRequest();
                 for (ConsumerRecord<String, String> record : records) {
 
                     //in case we haven't id in record use simple:
@@ -128,20 +141,28 @@ public class KafkaConsumerDemo {
                     try {
                         IndexRequest indexRequest = new IndexRequest(openSearchIndex)
                                 .source(record.value(), XContentType.JSON).id(uniqueId);
-                        IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
 
-                        log.info(response.getId());
+                            bulkRequest.add(indexRequest);
 
-
-                        log.info("\nThe record received successfully from kafka: \n" +
-                                "Value: " + record.value() + "\n" +
-                                "Key: " + record.key() + "\n" +
-                                "Partition: " + record.partition() + "\n" +
-                                "Offset: " + record.offset() + "\n" +
-                                "Open Search Index Response: " + response.getId() + "\n");
                     } catch (Exception e) {
 
                     }
+                }
+
+                if(bulkRequest.numberOfActions() > 0) {
+
+                   BulkResponse bulkResponse =  openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                   log.info("Consumer sent {} record(s) to OpenSearch", bulkResponse.getItems().length);
+
+                   try{
+                       Thread.sleep(1000);
+                   } catch (InterruptedException e) {
+                       e.printStackTrace();
+                   }
+
+
+                    consumer.commitSync();
+                    log.info("Offsets have been committed by consumer");
                 }
             }
 
