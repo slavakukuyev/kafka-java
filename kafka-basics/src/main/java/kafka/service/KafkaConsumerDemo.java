@@ -7,13 +7,13 @@ import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.index.IndexRequest;
-import org.opensearch.action.index.IndexResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.GetIndexRequest;
 import org.opensearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
@@ -26,7 +26,7 @@ public class KafkaConsumerDemo {
     private static final String openSearchIndex = "wikimedia";
 
     private static String extractRecordId(String jsonString) {
-       return  JsonParser.parseString(jsonString)
+        return JsonParser.parseString(jsonString)
                 .getAsJsonObject()
                 .get("meta")
                 .getAsJsonObject()
@@ -69,6 +69,21 @@ public class KafkaConsumerDemo {
          */
         properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "666");//number of maximum record on one poll //rename consumer group id to receive all records
 
+        //max.poll.interval.ms - maximum timeout between two .poll() for broker to think consumer is dead/stuck
+        properties.setProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "300000");
+
+
+        //max.partition.fetch.bytes = 1048576  - (1 MB per partition on fetch) if you have 100 partitions you must have 100mb RAM in your app
+        properties.setProperty(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, "1048576");
+
+        //fetch.max.bytes = 52428800  - (50MB) max size of messages on single fetch from kafka
+        properties.setProperty(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, "52428800");
+
+
+        // heartbeat.interval.ms = 3000
+        //usually heartbeat has to be set by formula: session.timeout.ms / 3
+        //consumer sends in intervals messages to broker: "I'm alive"
+        properties.setProperty(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, "3000");
 
         /*
         example of auto commit:
@@ -142,24 +157,22 @@ public class KafkaConsumerDemo {
                         IndexRequest indexRequest = new IndexRequest(openSearchIndex)
                                 .source(record.value(), XContentType.JSON).id(uniqueId);
 
-                            bulkRequest.add(indexRequest);
+                        bulkRequest.add(indexRequest);
 
                     } catch (Exception e) {
-
+                        log.info("Exception: {}", e);
                     }
                 }
 
-                if(bulkRequest.numberOfActions() > 0) {
+                if (bulkRequest.numberOfActions() > 0) {
+                    BulkResponse bulkResponse = openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    log.info("Consumer sent {} record(s) to OpenSearch", bulkResponse.getItems().length);
 
-                   BulkResponse bulkResponse =  openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
-                   log.info("Consumer sent {} record(s) to OpenSearch", bulkResponse.getItems().length);
-
-                   try{
-                       Thread.sleep(1000);
-                   } catch (InterruptedException e) {
-                       e.printStackTrace();
-                   }
-
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
 
                     consumer.commitSync();
                     log.info("Offsets have been committed by consumer");
